@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
@@ -7,11 +7,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const pathname = usePathname()
   const [checking, setChecking] = useState(true)
+  const [adminName, setAdminName] = useState('')
 
   useEffect(() => {
-    createClient().auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace('/login')
-      else setChecking(false)
+    createClient().auth.getSession().then(async ({ data }) => {
+      if (!data.session) { router.replace('/login'); return }
+      const { data: profile } = await createClient().from('profiles').select('full_name').eq('id', data.session.user.id).maybeSingle()
+      if (profile?.full_name) setAdminName(profile.full_name)
+      else setAdminName(data.session.user.email || '')
+      setChecking(false)
     })
   }, [router])
 
@@ -29,6 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = [
     { path: '/dashboard', label: '📊 Басты бет' },
     { path: '/dashboard/clients', label: '👥 Клиенттер' },
+    { path: '/dashboard/profile', label: '👤 Жеке кабинет' },
   ]
 
   return (
@@ -48,23 +53,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               background: pathname === item.path ? '#185FA5' : 'transparent',
               color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14,
               borderLeft: pathname === item.path ? '3px solid #60a5fa' : '3px solid transparent'
-            }}>
-              {item.label}
-            </button>
+            }}>{item.label}</button>
           ))}
         </nav>
         <div style={{ padding: '16px 20px', borderTop: '1px solid #333' }}>
+          <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {adminName}
+          </div>
           <button onClick={logout} style={{
             width: '100%', padding: '8px 12px', background: '#333',
             color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13
-          }}>
-            🚪 Шығу
-          </button>
+          }}>🚪 Шығу</button>
         </div>
       </aside>
-      <main style={{ flex: 1, padding: 24, overflow: 'auto' }}>
-        {children}
-      </main>
+      <main style={{ flex: 1, padding: 24, overflow: 'auto' }}>{children}</main>
     </div>
   )
 }
