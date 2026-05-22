@@ -9,7 +9,6 @@ export default function AdminProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
-
   const [newPassword, setNewPassword] = useState('')
   const [newPassword2, setNewPassword2] = useState('')
   const [passLoading, setPassLoading] = useState(false)
@@ -24,10 +23,7 @@ export default function AdminProfilePage() {
     if (!session) return
     setEmail(session.user.email || '')
     const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
-    if (data) {
-      setFullName(data.full_name || '')
-      setPhone(data.phone || '')
-    }
+    if (data) { setFullName(data.full_name || ''); setPhone(data.phone || '') }
     setLoading(false)
   }
 
@@ -37,8 +33,7 @@ export default function AdminProfilePage() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
     await supabase.from('profiles').upsert({ id: session.user.id, full_name: fullName, phone })
-    setSaving(false)
-    setSuccess('Сақталды!')
+    setSaving(false); setSuccess('Сақталды!')
     setTimeout(() => setSuccess(''), 3000)
   }
 
@@ -49,8 +44,7 @@ export default function AdminProfilePage() {
     setPassLoading(true); setPassError(''); setPassSuccess('')
     const { error } = await createClient().auth.updateUser({ password: newPassword })
     if (error) { setPassError(error.message); setPassLoading(false); return }
-    setNewPassword(''); setNewPassword2('')
-    setPassLoading(false)
+    setNewPassword(''); setNewPassword2(''); setPassLoading(false)
     setPassSuccess('Пароль өзгертілді!')
     setTimeout(() => setPassSuccess(''), 3000)
   }
@@ -60,7 +54,6 @@ export default function AdminProfilePage() {
   return (
     <div style={{ maxWidth: 600 }}>
       <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>Жеке кабинет</h1>
-
       <div className="card">
         <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Профиль</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -82,7 +75,6 @@ export default function AdminProfilePage() {
           </button>
         </div>
       </div>
-
       <div className="card">
         <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Пароль өзгерту</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
