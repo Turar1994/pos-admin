@@ -9,6 +9,7 @@ export default function AdminProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
+  const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newPassword2, setNewPassword2] = useState('')
   const [passLoading, setPassLoading] = useState(false)
@@ -38,14 +39,18 @@ export default function AdminProfilePage() {
   }
 
   async function changePassword() {
-    if (!newPassword || !newPassword2) { setPassError('Барлық өрісті толтырыңыз'); return }
+    if (!oldPassword || !newPassword || !newPassword2) { setPassError('Барлық өрісті толтырыңыз'); return }
     if (newPassword !== newPassword2) { setPassError('Парольдер сәйкес емес'); return }
     if (newPassword.length < 6) { setPassError('Кемінде 6 таңба'); return }
     setPassLoading(true); setPassError(''); setPassSuccess('')
-    const { error } = await createClient().auth.updateUser({ password: newPassword })
+    const supabase = createClient()
+    // Ескі паролді тексеру
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: oldPassword })
+    if (signInError) { setPassError('Ескі пароль қате'); setPassLoading(false); return }
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
     if (error) { setPassError(error.message); setPassLoading(false); return }
-    setNewPassword(''); setNewPassword2(''); setPassLoading(false)
-    setPassSuccess('Пароль өзгертілді!')
+    setOldPassword(''); setNewPassword(''); setNewPassword2('')
+    setPassLoading(false); setPassSuccess('Пароль өзгертілді!')
     setTimeout(() => setPassSuccess(''), 3000)
   }
 
@@ -78,6 +83,7 @@ export default function AdminProfilePage() {
       <div className="card">
         <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Пароль өзгерту</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input type="password" placeholder="Ескі пароль" value={oldPassword} onChange={e => setOldPassword(e.target.value)} />
           <input type="password" placeholder="Жаңа пароль" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
           <input type="password" placeholder="Жаңа паролді қайталаңыз" value={newPassword2} onChange={e => setNewPassword2(e.target.value)} />
           {passError && <p style={{ color: '#D85A30', fontSize: 13 }}>{passError}</p>}
