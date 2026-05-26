@@ -34,6 +34,30 @@ export default function ClientsPage() {
   const [expandId, setExpandId] = useState<string | null>(null)
   const [form, setForm] = useState({ ...emptyForm })
 
+  async function signOutUser(email: string) {
+    try {
+      const supabase = createClient()
+      // Email арқылы user_id табу
+      const { data: authData } = await supabase
+        .from('clients').select('email').eq('email', email).single()
+      if (!authData) return
+
+      // Edge Function шақыру
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch('https://dmvjtafucxcnbmbokazu.supabase.co/functions/v1/sign-out-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtdmp0YWZ1Y3hjbmJtYm9rYXp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTIwMzYsImV4cCI6MjA5NDg4ODAzNn0.e6r7y9tnSGrUs9sVdnM1cFOqvTLScu55ZLBHbKwv0cg'
+        },
+        body: JSON.stringify({ email })
+      })
+    } catch (e) {
+      console.log('SignOut error:', e)
+    }
+  }
+
   const loadClients = useCallback(async () => {
     const supabase = createClient()
     const { data: active } = await supabase.from('clients').select('*')
@@ -72,6 +96,10 @@ export default function ClientsPage() {
       subscription_end: form.subscription_end || null,
       notes: form.notes,
     }).eq('id', editId)
+    // Статус өзгерсе сессияны жабу
+    if (form.status === 'blocked' || form.status === 'inactive') {
+      await signOutUser(form.email)
+    }
     setEditId(null); setForm({ ...emptyForm }); loadClients()
   }
 
@@ -102,6 +130,10 @@ export default function ClientsPage() {
   async function toggleStatus(client: Client) {
     const newStatus = client.status === 'active' ? 'blocked' : 'active'
     await createClient().from('clients').update({ status: newStatus }).eq('id', client.id)
+    // Блоктағанда немесе белсенді еместе — сессияны жабу
+    if (newStatus === 'blocked') {
+      await signOutUser(client.email)
+    }
     loadClients()
   }
 
