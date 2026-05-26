@@ -105,6 +105,30 @@ export default function ClientsPage() {
     loadClients()
   }
 
+  async function resetPassword(client: Client) {
+    const newPass = prompt(`${client.store_name} үшін жаңа пароль енгізіңіз:`)
+    if (!newPass || newPass.length < 6) { 
+      alert('Пароль кемінде 6 таңба болуы керек!')
+      return 
+    }
+    const supabase = createClient()
+    // Phone to email format
+    let clean = client.phone ? client.phone.replace(/\D/g, '') : ''
+    if (clean.startsWith('8')) clean = '7' + clean.slice(1)
+    if (clean.length === 10) clean = '7' + clean
+    const email = clean ? `${clean}@pos.kz` : client.email
+
+    const { error } = await supabase.rpc('reset_user_password', { 
+      user_email: email, 
+      new_password: newPass 
+    })
+    if (error) {
+      alert('Қате: ' + error.message)
+    } else {
+      alert(`✅ Пароль өзгертілді! Клиентке жаңа пароль: ${newPass}`)
+    }
+  }
+
   function startEdit(c: Client) {
     setEditId(c.id)
     setForm({ store_name: c.store_name, email: c.email, phone: c.phone || '',
@@ -249,6 +273,8 @@ export default function ClientsPage() {
                     <button className={`btn btn-sm ${c.status === 'active' ? 'btn-warning' : 'btn-success'}`} onClick={() => toggleStatus(c)}>
                       {c.status === 'active' ? '🚫' : '✅'}
                     </button>
+                    <button className="btn btn-sm" onClick={() => resetPassword(c)} 
+                      style={{ borderColor: '#6b7280', color: '#6b7280' }} title="Пароль өзгерту">🔑</button>
                     <button className="btn btn-sm btn-danger" onClick={() => deleteClient(c.id)}>🗑</button>
                   </div>
                 </div>
