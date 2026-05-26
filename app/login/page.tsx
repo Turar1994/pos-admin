@@ -1,11 +1,22 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
+
+  useEffect(() => {
+    // Recovery token өңдеу
+    const hash = window.location.hash
+    if (hash && hash.includes('access_token')) {
+      const supabase = createClient()
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) router.replace('/dashboard')
+      })
+    }
+  }, [router])
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
