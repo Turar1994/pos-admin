@@ -75,13 +75,22 @@ export default function ClientsPage() {
     setForm(prev => ({ ...prev, [key]: value }))
   }
 
+  // On activation: if no subscription or it has expired, give one month from today.
+  function monthFromNow() {
+    const d = new Date(); d.setMonth(d.getMonth() + 1)
+    return d.toISOString().slice(0, 10)
+  }
+  function needsNewSub(date: string | null | undefined) {
+    return !date || new Date(date) < new Date()
+  }
+
   async function addClient() {
     if (!form.store_name || !form.email) return
     const supabase = createClient()
     await supabase.from('clients').insert({
       store_name: form.store_name, email: form.email,
       phone: form.phone, status: form.status,
-      subscription_end: form.subscription_end || null,
+      subscription_end: form.subscription_end || (form.status === 'active' ? monthFromNow() : null),
       notes: form.notes, deleted_at: null
     })
     setForm({ ...emptyForm }); setShowAdd(false); loadClients()
@@ -90,10 +99,13 @@ export default function ClientsPage() {
   async function updateClient() {
     if (!editId) return
     const supabase = createClient()
+    const prev = clients.find(c => c.id === editId)
+    const activating = form.status === 'active' && prev?.status !== 'active'
+    const sub = activating && needsNewSub(form.subscription_end) ? monthFromNow() : (form.subscription_end || null)
     await supabase.from('clients').update({
       store_name: form.store_name, email: form.email,
       phone: form.phone, status: form.status,
-      subscription_end: form.subscription_end || null,
+      subscription_end: sub,
       notes: form.notes,
     }).eq('id', editId)
     // Статус өзгерсе сессияны жабу
@@ -115,7 +127,10 @@ export default function ClientsPage() {
   async function restoreClient(id: string) {
     if (!confirm('Клиентті қалпына келтіруге сенімдісіз бе?')) return
     const supabase = createClient()
-    await supabase.from('clients').update({ deleted_at: null, status: 'active' }).eq('id', id)
+    const c = deletedClients.find(x => x.id === id)
+    const patch: any = { deleted_at: null, status: 'active' }
+    if (needsNewSub(c?.subscription_end)) patch.subscription_end = monthFromNow()
+    await supabase.from('clients').update(patch).eq('id', id)
     loadClients()
   }
 
@@ -129,7 +144,9 @@ export default function ClientsPage() {
 
   async function toggleStatus(client: Client) {
     const newStatus = client.status === 'active' ? 'blocked' : 'active'
-    await createClient().from('clients').update({ status: newStatus }).eq('id', client.id)
+    const patch: any = { status: newStatus }
+    if (newStatus === 'active' && needsNewSub(client.subscription_end)) patch.subscription_end = monthFromNow()
+    await createClient().from('clients').update(patch).eq('id', client.id)
     // Блоктағанда немесе белсенді еместе — сессияны жабу
     if (newStatus === 'blocked') {
       await signOutUser(client.email)
